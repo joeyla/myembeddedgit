@@ -1,0 +1,2 @@
+# myembeddedgit
+MyEmbeddedStuff
