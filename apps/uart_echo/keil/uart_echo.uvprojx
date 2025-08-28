@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
+<Project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="project_all_schema.xsd">
+  <SchemaVersion>2.1</SchemaVersion>
+  <Header>### uVision Project, (C) Keil Software</Header>
+  <Targets>
+    <Target>
+      <TargetName>uart_echo_f407</TargetName>
+      <ToolsetNumber>0x4</ToolsetNumber>
+      <ToolsetName>ARM-ADS</ToolsetName>
+      <pCCUsed>5060000::V5.06 update 7 (build 960)::ARMCC</pCCUsed>
+      <Device>STM32F407VG</Device>
+      <TargetOption>
+        <TargetCommonOption>
+          <Device>STM32F407VG</Device>
+          <Vendor>STMicroelectronics</Vendor>
+          <Cpu>IRAM(0x20000000,0x00030000) IRAM2(0x10000000,0x00010000) IROM(0x08000000,0x00100000) CLOCK(168000000)</Cpu>
+          <FlashDriverDll>UL2CM3(-S0 -C0 -P0 -FD20000000 -FC1000 -FN1 -FF0STM32F4xx_1024 -FS08000000 -FL0100000 -FP0($$Device:STM32F407VG$Flash\STM32F4xx_1024.FLM))</FlashDriverDll>
+          <DeviceId>0</DeviceId>
+          <RegisterFile>$$Device:STM32F407VG$Device\Include\stm32f4xx.h</RegisterFile>
+          <MemoryEnv></MemoryEnv>
+          <CAdd>
+            ../../../../core/include;
+            ../../../../services/at_engine/include;
+            ../../../../platform/mcu/stm32f4/include;
+            ../../../../platform/boards/stm32f407-custom;
+            ../../../../platform/os/baremetal/include
+          </CAdd>
+          <IncludeLibs></IncludeLibs>
+        </TargetCommonOption>
+      </TargetOption>
+      <Groups>
+        <Group>
+          <GroupName>Application</GroupName>
+          <Files>
+            <File><FileName>main.c</FileName><FileType>1</FileType><FilePath>..\src\main.c</FilePath></File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>Core</GroupName>
+          <Files>
+            <File><FileName>cbuf.c</FileName><FileType>1</FileType><FilePath>..\..\..\core\src\cbuf.c</FilePath></File>
+            <File><FileName>timebase.c</FileName><FileType>1</FileType><FilePath>..\..\..\core\src\timebase.c</FilePath></File>
+            <File><FileName>log.c</FileName><FileType>1</FileType><FilePath>..\..\..\core\src\log.c</FilePath></File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>Services</GroupName>
+          <Files>
+            <File><FileName>at_engine.c</FileName><FileType>1</FileType><FilePath>..\..\..\services\at_engine\src\at_engine.c</FilePath></File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>Platform</GroupName>
+          <Files>
+            <File><FileName>mcu_uart_stm32f4.c</FileName><FileType>1</FileType><FilePath>..\..\..\platform\mcu\stm32f4\src\mcu_uart_stm32f4.c</FilePath></File>
+            <File><FileName>board.c</FileName><FileType>1</FileType><FilePath>..\..\..\platform\boards\stm32f407-custom\board.c</FilePath></File>
+            <File><FileName>os_port_bare.c</FileName><FileType>1</FileType><FilePath>..\..\..\platform\os\baremetal\src\os_port_bare.c</FilePath></File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>Vendor</GroupName>
+          <Files>
+            <!-- Add startup_stm32f407xx.s, system_stm32f4xx.c, and any LL/HAL source here -->
+          </Files>
+        </Group>
+      </Groups>
+    </Target>
+  </Targets>
+</Project>

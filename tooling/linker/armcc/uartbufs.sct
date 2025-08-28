@@ -1,0 +1,6 @@
+
+; Example ARMCC/ARMCLANG scatter snippet. Add to your scatter file regions:
+;  RW_IRAM2 0x10000000 0x00010000  {  ; adjust to your memory map
+;    .ANY (+RO +RW +ZI)
+;    uartbufs_region 0x10000000 0x00010000  { *( .uartbufs ) }
+;  }
