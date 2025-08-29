@@ -339,7 +339,7 @@
               <MiscControls>--diag_suppress=3731</MiscControls>
               <Define>USE_FULL_LL_DRIVER,STM32F407xx</Define>
               <Undefine></Undefine>
-              <IncludePath>..\..\..\..\;..\..\..\services;..\..\..\core\include;..\..\..\services\at_engine\include;..\..\..\platform\boards\stm32f407-custom;C:\Keil_v5\ARM\Pack\Keil\STM32F4xx_DFP\2.12.0\Drivers\STM32F4xx_HAL_Driver\Inc</IncludePath>
+              <IncludePath>..\..\..\..\;..\..\..\services;..\..\..\core\include;..\..\..\services\at_engine\include;..\..\..\platform\boards\stm32f407-BlackPill;C:\Keil_v5\ARM\Pack\Keil\STM32F4xx_DFP\2.12.0\Drivers\STM32F4xx_HAL_Driver\Inc</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -431,7 +431,7 @@
             <File>
               <FileName>board.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\..\..\platform\boards\stm32f407-custom\board.c</FilePath>
+              <FilePath>..\..\..\platform\boards\stm32f407-BlackPill\board.c</FilePath>
             </File>
             <File>
               <FileName>os_port_bare.c</FileName>
