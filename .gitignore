@@ -1,0 +1,43 @@
+# Build artifacts
+build/
+cmake-build*/
+CMakeFiles/
+CMakeCache.txt
+*.o
+*.obj
+*.elf
+*.axf
+*.map
+*.hex
+*.bin
+*.lst
+*.d
+*.su
+*.htm
+*.crf
+*.dbgconf
+*.lnp
+*.dep
+
+# Keil/uVision
+*.uvguix*
+*.uvoptx
+*.uvprojx.user
+RTE/
+Objects/
+Listings/
+JLinkLog.txt
+
+# IDE folders
+.vscode/
+.idea/
+*.code-workspace
+*.launch
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.pyc

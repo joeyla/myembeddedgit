@@ -23,6 +23,9 @@ SECTIONS
 
 /* Defines -------------------------------------------------------------------*/
 #define MODULE_ID  0x101
+#ifdef MODULE_TAG
+#undef MODULE_TAG
+#endif
 #define MODULE_TAG "core.cbuf"
 
 /* Typedefs ------------------------------------------------------------------*/

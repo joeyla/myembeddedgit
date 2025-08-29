@@ -18,12 +18,17 @@ Created:       2025-08-28
 
 typedef struct {
     USART_TypeDef*         usart;
+
     GPIO_TypeDef*          tx_port; uint32_t tx_pin; uint32_t tx_af;
     GPIO_TypeDef*          rx_port; uint32_t rx_pin; uint32_t rx_af;
+
     DMA_TypeDef*           dma;
     DMA_Stream_TypeDef*    dma_rx_stream; uint32_t dma_rx_channel;
+    DMA_Stream_TypeDef*    dma_tx_stream; uint32_t dma_tx_channel;
+
     IRQn_Type              usart_irqn;
     IRQn_Type              dma_rx_irqn;
+    IRQn_Type              dma_tx_irqn;
 } board_uart_map_t;
 
 const board_uart_map_t* board_uart_get(int logical_id);

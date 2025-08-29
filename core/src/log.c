@@ -24,6 +24,9 @@ SECTIONS
 
 /* Defines -------------------------------------------------------------------*/
 #define MODULE_ID  0x103
+#ifdef MODULE_TAG
+#undef MODULE_TAG
+#endif
 #define MODULE_TAG "core.log"
 
 /* Typedefs ------------------------------------------------------------------*/

@@ -12,6 +12,9 @@ Created:       2025-08-28
 
 /* Defines -------------------------------------------------------------------*/
 #define MODULE_ID  0x501
+#ifdef MODULE_TAG
+#undef MODULE_TAG
+#endif
 #define MODULE_TAG "platform.os.baremetal"
 
 /* Public API ----------------------------------------------------------------*/

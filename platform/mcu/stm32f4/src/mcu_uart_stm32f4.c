@@ -11,15 +11,21 @@ Author:        Starter Repo
 #include "core/log.h"
 #include "core/os_iface.h"
 #include "core/uart_iface.h"
+#include "core/clock_iface.h"   // add this near the top
 #include "board.h"
 
-#include "stm32f4xx_ll_usart.h"
-#include "stm32f4xx_ll_dma.h"
 #include "stm32f4xx_ll_rcc.h"
 #include "stm32f4xx_ll_bus.h"
+#include "stm32f4xx_ll_gpio.h"
+#include "stm32f4xx_ll_usart.h"
+#include "stm32f4xx_ll_dma.h"
+#include "stm32f4xx_ll_utils.h"
 
 /* Defines -------------------------------------------------------------------*/
 #define MODULE_ID   0x301
+#ifdef MODULE_TAG
+#undef MODULE_TAG
+#endif
 #define MODULE_TAG  "platform.mcu.stm32f4.uart"
 
 #define RX_DMA_BUF_SIZE 512u  /* must be power of two */
@@ -59,18 +65,20 @@ struct uart_handle_s {
 /* Private (static) data -----------------------------------------------------*/
 
     /* Link-time configurable buffers (override these symbols to change sizes/placement) */
-    extern volatile uint8_t stm32f4_uart0_rx_buf[];
+extern volatile uint8_t stm32f4_uart0_rx_buf[];
+extern const uint16_t stm32f4_uart0_rx_size;
 
 extern volatile uint8_t stm32f4_uart1_rx_buf[];
 extern const uint16_t   stm32f4_uart1_rx_size;
-    
-    extern volatile uint8_t stm32f4_uart0_tx_buf[];
+
+extern volatile uint8_t stm32f4_uart0_tx_buf[];
+extern const uint16_t stm32f4_uart0_tx_size;
 
 extern volatile uint8_t stm32f4_uart1_tx_buf[];
 extern const uint16_t   stm32f4_uart1_tx_size;
     
-    
 static struct uart_handle_s handles[3];
+static void usart_apply_cfg(USART_TypeDef* U, const uart_config_t* cfg);
 
 /* Private helpers -----------------------------------------------------------*/
 static inline uint16_t tx_ring_count(struct uart_handle_s* h){
@@ -80,8 +88,34 @@ static inline uint16_t tx_ring_space(struct uart_handle_s* h){
     return (uint16_t)(TX_RING_SIZE - 1u - tx_ring_count(h));
 }
 
-static void h->tx_coalesce_min = 32;
-    usart_apply_cfg(USART_TypeDef* U, const uart_config_t* cfg){
+/* F4: USART data register address (portable across pack versions) */
+static uint32_t usart_dr_addr(USART_TypeDef* U) {
+    return (uint32_t)&U->DR;  /* F4 uses DR, not RDR/TDR */
+}
+
+/* map LL prescaler enum to divisor */
+static uint32_t apb_div_from_presc(uint32_t presc) {
+    switch (presc) {
+        case LL_RCC_APB1_DIV_1:  return 1;
+        case LL_RCC_APB1_DIV_2:  return 2;
+        case LL_RCC_APB1_DIV_4:  return 4;
+        case LL_RCC_APB1_DIV_8:  return 8;
+        case LL_RCC_APB1_DIV_16: return 16;
+        /* APB2 uses the same DIV constants */
+        default: return 1;
+    }
+}
+
+static uint32_t get_pclk_freq(USART_TypeDef* U) {
+    uint32_t hclk  = SystemCoreClock;  /* require system_stm32f4xx.c */
+    uint32_t presc = (U == USART1 || U == USART6)
+                     ? LL_RCC_GetAPB2Prescaler()
+                     : LL_RCC_GetAPB1Prescaler();
+    return hclk / apb_div_from_presc(presc);
+}
+
+static void usart_apply_cfg(USART_TypeDef* U, const uart_config_t* cfg)
+{
     LL_USART_Disable(U);
 
     LL_USART_SetTransferDirection(U, LL_USART_DIRECTION_TX_RX);
@@ -89,40 +123,51 @@ static void h->tx_coalesce_min = 32;
                                 (cfg->parity==1)?LL_USART_PARITY_ODD:(cfg->parity==2)?LL_USART_PARITY_EVEN:LL_USART_PARITY_NONE,
                                 (cfg->stopbits==2)?LL_USART_STOPBITS_2:LL_USART_STOPBITS_1);
     LL_USART_SetOverSampling(U, LL_USART_OVERSAMPLING_16);
-    uint32_t pclk = (U == USART1 || U == USART6) ? LL_RCC_GetAPB2ClockFreq() : LL_RCC_GetAPB1ClockFreq();
+    //uint32_t pclk = (U == USART1 || U == USART6) ? LL_RCC_GetAPB2ClockFreq() : LL_RCC_GetAPB1ClockFreq();
+    uint32_t pclk = get_pclk_freq(U);
     LL_USART_SetBaudRate(U, pclk, LL_USART_OVERSAMPLING_16, cfg->baud);
 
     LL_USART_Enable(U);
 }
 
+/* Map a DMA_Stream_TypeDef* to its LL stream index */
+static uint32_t dma_stream_index(DMA_Stream_TypeDef* s){
+#define MAP(ctrl,n) if (s == ctrl##_Stream##n) return LL_DMA_STREAM_##n
+    MAP(DMA1,0); MAP(DMA1,1); MAP(DMA1,2); MAP(DMA1,3);
+    MAP(DMA1,4); MAP(DMA1,5); MAP(DMA1,6); MAP(DMA1,7);
+    MAP(DMA2,0); MAP(DMA2,1); MAP(DMA2,2); MAP(DMA2,3);
+    MAP(DMA2,4); MAP(DMA2,5); MAP(DMA2,6); MAP(DMA2,7);
+#undef MAP
+    return LL_DMA_STREAM_0; /* fallback */
+}
+
 static void dma_rx_start(struct uart_handle_s* h){
     const board_uart_map_t* m = h->map;
 
-    LL_DMA_DisableStream(m->dma, (uint32_t)m->dma_rx_stream);
-    LL_DMA_SetChannelSelection(m->dma_rx_stream, m->dma_rx_channel);
-    LL_DMA_SetDataTransferDirection(m->dma_rx_stream, LL_DMA_DIRECTION_PERIPH_TO_MEMORY);
-    LL_DMA_SetStreamPriorityLevel(m->dma_rx_stream, LL_DMA_PRIORITY_HIGH);
-    LL_DMA_SetMode(m->dma_rx_stream, LL_DMA_MODE_CIRCULAR);
-    LL_DMA_SetPeriphIncMode(m->dma_rx_stream, LL_DMA_PERIPH_NOINCREMENT);
-    LL_DMA_SetMemoryIncMode(m->dma_rx_stream, LL_DMA_MEMORY_INCREMENT);
-    LL_DMA_SetPeriphSize(m->dma_rx_stream, LL_DMA_PDATAALIGN_BYTE);
-    LL_DMA_SetMemorySize(m->dma_rx_stream, LL_DMA_MDATAALIGN_BYTE);
+    uint32_t rxst = dma_stream_index(m->dma_rx_stream);
 
-    LL_DMA_SetPeriphAddress(m->dma_rx_stream, LL_USART_DMA_GetRegAddr(m->usart, LL_USART_DMA_REG_DATA_RECEIVE));
-    LL_DMA_SetMemoryAddress(m->dma_rx_stream, (uint32_t)h->rx_buf);
-    LL_DMA_SetDataLength(m->dma_rx_stream, h->rx_size);
-
-    LL_DMA_ClearFlag_TC5(m->dma);
-    LL_DMA_ClearFlag_HT5(m->dma);
-    LL_DMA_EnableIT_HT(m->dma_rx_stream);
-    LL_DMA_EnableIT_TC(m->dma_rx_stream);
+    LL_DMA_DisableStream              (m->dma, rxst);
+    LL_DMA_SetChannelSelection        (m->dma, rxst, m->dma_rx_channel);
+    LL_DMA_SetDataTransferDirection   (m->dma, rxst, LL_DMA_DIRECTION_PERIPH_TO_MEMORY);
+    LL_DMA_SetStreamPriorityLevel     (m->dma, rxst, LL_DMA_PRIORITY_HIGH);
+    LL_DMA_SetMode                    (m->dma, rxst, LL_DMA_MODE_CIRCULAR);
+    LL_DMA_SetPeriphIncMode           (m->dma, rxst, LL_DMA_PERIPH_NOINCREMENT);
+    LL_DMA_SetMemoryIncMode           (m->dma, rxst, LL_DMA_MEMORY_INCREMENT);
+    LL_DMA_SetPeriphSize              (m->dma, rxst, LL_DMA_PDATAALIGN_BYTE);
+    LL_DMA_SetMemorySize              (m->dma, rxst, LL_DMA_MDATAALIGN_BYTE);
+    LL_DMA_SetPeriphAddress           (m->dma, rxst, usart_dr_addr(m->usart));
+    LL_DMA_SetMemoryAddress           (m->dma, rxst, (uint32_t)h->rx_buf);
+    LL_DMA_SetDataLength              (m->dma, rxst, h->rx_size);
+    LL_DMA_EnableIT_HT                (m->dma, rxst);
+    LL_DMA_EnableIT_TC                (m->dma, rxst);
 
     LL_USART_EnableDMAReq_RX(m->usart);
     LL_DMA_EnableStream(m->dma, (uint32_t)m->dma_rx_stream);
 }
 
 static uint16_t dma_rx_available(struct uart_handle_s* h){
-    uint16_t ndtr = (uint16_t)LL_DMA_GetDataLength(h->map->dma_rx_stream);
+    uint32_t rxst = dma_stream_index(h->map->dma_rx_stream);
+    uint16_t ndtr = (uint16_t)LL_DMA_GetDataLength(h->map->dma, rxst);
     uint16_t head = (uint16_t)((h->rx_size - ndtr) & h->rx_mask);
     uint16_t tail = h->rx_tail;
     if (head >= tail) return (uint16_t)(head - tail);
@@ -169,25 +214,24 @@ static void tx_dma_start_locked(struct uart_handle_s* h){
     }
     h->tx_active_len = contiguous;
 
-    LL_DMA_DisableStream(DMA1, (uint32_t)DMA1_Stream6);
-    LL_DMA_SetChannelSelection(DMA1_Stream6, LL_DMA_CHANNEL_4); /* USART2_TX */
-    LL_DMA_SetDataTransferDirection(DMA1_Stream6, LL_DMA_DIRECTION_MEMORY_TO_PERIPH);
-    LL_DMA_SetStreamPriorityLevel(DMA1_Stream6, LL_DMA_PRIORITY_HIGH);
-    LL_DMA_SetMode(DMA1_Stream6, LL_DMA_MODE_NORMAL);
-    LL_DMA_SetPeriphIncMode(DMA1_Stream6, LL_DMA_PERIPH_NOINCREMENT);
-    LL_DMA_SetMemoryIncMode(DMA1_Stream6, LL_DMA_MEMORY_INCREMENT);
-    LL_DMA_SetPeriphSize(DMA1_Stream6, LL_DMA_PDATAALIGN_BYTE);
-    LL_DMA_SetMemorySize(DMA1_Stream6, LL_DMA_MDATAALIGN_BYTE);
+    const board_uart_map_t* m = h->map;
+    uint32_t txst = dma_stream_index(m->dma_tx_stream);
 
-    LL_DMA_SetPeriphAddress(DMA1_Stream6, LL_USART_DMA_GetRegAddr(h->map->usart, LL_USART_DMA_REG_DATA_TRANSMIT));
-    LL_DMA_SetMemoryAddress(DMA1_Stream6, (uint32_t)&h->tx_ring[tail]);
-    LL_DMA_SetDataLength(DMA1_Stream6, contiguous);
-
-    LL_DMA_ClearFlag_TC6(DMA1);
-    LL_DMA_EnableIT_TC(DMA1_Stream6);
-
-    LL_USART_EnableDMAReq_TX(h->map->usart);
-    LL_DMA_EnableStream(DMA1, (uint32_t)DMA1_Stream6);
+    LL_DMA_DisableStream              (m->dma, txst);
+    LL_DMA_SetChannelSelection        (m->dma, txst, m->dma_tx_channel);
+    LL_DMA_SetDataTransferDirection   (m->dma, txst, LL_DMA_DIRECTION_MEMORY_TO_PERIPH);
+    LL_DMA_SetStreamPriorityLevel     (m->dma, txst, LL_DMA_PRIORITY_HIGH);
+    LL_DMA_SetMode                    (m->dma, txst, LL_DMA_MODE_NORMAL);
+    LL_DMA_SetPeriphIncMode           (m->dma, txst, LL_DMA_PERIPH_NOINCREMENT);
+    LL_DMA_SetMemoryIncMode           (m->dma, txst, LL_DMA_MEMORY_INCREMENT);
+    LL_DMA_SetPeriphSize              (m->dma, txst, LL_DMA_PDATAALIGN_BYTE);
+    LL_DMA_SetMemorySize              (m->dma, txst, LL_DMA_MDATAALIGN_BYTE);
+    LL_DMA_SetPeriphAddress           (m->dma, txst, usart_dr_addr(m->usart));
+    LL_DMA_SetMemoryAddress           (m->dma, txst, (uint32_t)&h->tx_ring[tail]);
+    LL_DMA_SetDataLength              (m->dma, txst, contiguous);
+    LL_DMA_EnableIT_TC                (m->dma, txst);
+    LL_DMA_EnableStream               (m->dma, txst);
+    
     h->tx_busy = 1u;
 }
 
@@ -276,7 +320,7 @@ status_t uart_read(uart_handle_t* h_, uint8_t *buf, uint16_t maxlen, uint16_t* o
     uint16_t tail = h->rx_tail;
 
     for(uint16_t i=0;i<to_copy;i++){
-        buf[i] = h->rx_dma_buf[tail];
+        buf[i] = h->rx_buf[tail];
         tail = (uint16_t)((tail + 1u) & h->rx_mask);
     }
     h->rx_tail = tail;

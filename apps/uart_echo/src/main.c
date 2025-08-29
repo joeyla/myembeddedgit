@@ -11,12 +11,15 @@ Created:       2025-08-28
 #include "core/err.h"
 #include "core/log.h"
 #include "core/uart_iface.h"
-#include "services/at_engine/at_engine.h"
+#include "at_engine.h"
 #include "core/clock_iface.h"
 #include "board.h"
 
 /* Defines -------------------------------------------------------------------*/
 #define MODULE_ID  0x601
+#ifdef MODULE_TAG
+#undef MODULE_TAG
+#endif
 #define MODULE_TAG "apps.uart_echo"
 
 /* Public API ----------------------------------------------------------------*/

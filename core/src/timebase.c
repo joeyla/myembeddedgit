@@ -13,6 +13,9 @@ Created:       2025-08-28
 
 /* Defines -------------------------------------------------------------------*/
 #define MODULE_ID  0x102
+#ifdef MODULE_TAG
+#undef MODULE_TAG
+#endif
 #define MODULE_TAG "core.timebase"
 
 /* Public API ----------------------------------------------------------------*/

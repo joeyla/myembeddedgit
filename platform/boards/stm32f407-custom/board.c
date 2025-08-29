@@ -13,31 +13,40 @@ Created:       2025-08-28
 
 /* Defines -------------------------------------------------------------------*/
 #define MODULE_ID  0x401
+#ifdef MODULE_TAG
+#undef MODULE_TAG
+#endif
 #define MODULE_TAG "platform.board.stm32f407_custom"
 
 /* Private (static) data -----------------------------------------------------*/
 static const board_uart_map_t uarts[] = {
-    /* logical 0: debug/modem over USART2 */
-    {
+    { /* logical 0: USART2 on PA2/PA3 (AF7) */
         .usart = USART2,
         .tx_port = GPIOA, .tx_pin = LL_GPIO_PIN_2, .tx_af = LL_GPIO_AF_7,
         .rx_port = GPIOA, .rx_pin = LL_GPIO_PIN_3, .rx_af = LL_GPIO_AF_7,
         .dma = DMA1,
-        .dma_rx_stream = DMA1_Stream5, .dma_rx_channel = LL_DMA_CHANNEL_4, // USART2_RX
+
+        .dma_rx_stream = DMA1_Stream5, .dma_rx_channel = LL_DMA_CHANNEL_4, /* USART2_RX */
+        .dma_tx_stream = DMA1_Stream6, .dma_tx_channel = LL_DMA_CHANNEL_4, /* USART2_TX */
+
         .usart_irqn = USART2_IRQn,
-        .dma_rx_irqn = DMA1_Stream5_IRQn
+        .dma_rx_irqn = DMA1_Stream5_IRQn,
+        .dma_tx_irqn = DMA1_Stream6_IRQn
     },
-, 
     { /* logical 1: USART3 on PD8/PD9 (AF7) */
         .usart = USART3,
         .tx_port = GPIOD, .tx_pin = LL_GPIO_PIN_8, .tx_af = LL_GPIO_AF_7,
         .rx_port = GPIOD, .rx_pin = LL_GPIO_PIN_9, .rx_af = LL_GPIO_AF_7,
         .dma = DMA1,
-        .dma_rx_stream = DMA1_Stream1, .dma_rx_channel = LL_DMA_CHANNEL_4, /* adjust per mapping */
+
+        .dma_rx_stream = DMA1_Stream1, .dma_rx_channel = LL_DMA_CHANNEL_4, /* USART3_RX */
+        .dma_tx_stream = DMA1_Stream3, .dma_tx_channel = LL_DMA_CHANNEL_4, /* USART3_TX */
+
         .usart_irqn = USART3_IRQn,
-        .dma_rx_irqn = DMA1_Stream1_IRQn
+        .dma_rx_irqn = DMA1_Stream1_IRQn,
+        .dma_tx_irqn = DMA1_Stream3_IRQn
     }
-};
+};;
 
 /* Public API ----------------------------------------------------------------*/
 const board_uart_map_t* board_uart_get(int logical_id){
