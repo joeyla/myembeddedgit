@@ -21,6 +21,15 @@ Author:        Starter Repo
 #include "stm32f4xx_ll_dma.h"
 #include "stm32f4xx_ll_utils.h"
 
+/* portable inline for ARMCC/ARMCLANG/GCC */
+#ifndef STATIC_INLINE
+#  if defined(__CC_ARM) || defined(__ARMCC_VERSION)
+#    define STATIC_INLINE static __inline
+#  else
+#    define STATIC_INLINE static inline
+#  endif
+#endif
+
 /* Defines -------------------------------------------------------------------*/
 #define MODULE_ID   0x301
 #ifdef MODULE_TAG
@@ -81,10 +90,10 @@ static struct uart_handle_s handles[3];
 static void usart_apply_cfg(USART_TypeDef* U, const uart_config_t* cfg);
 
 /* Private helpers -----------------------------------------------------------*/
-static inline uint16_t tx_ring_count(struct uart_handle_s* h){
+STATIC_INLINE uint16_t tx_ring_count(struct uart_handle_s* h){
     return (uint16_t)((h->tx_head + TX_RING_SIZE - h->tx_tail) & h->tx_mask);
 }
-static inline uint16_t tx_ring_space(struct uart_handle_s* h){
+STATIC_INLINE uint16_t tx_ring_space(struct uart_handle_s* h){
     return (uint16_t)(TX_RING_SIZE - 1u - tx_ring_count(h));
 }
 
@@ -336,9 +345,10 @@ status_t uart_set_rx_callback(uart_handle_t* h_, uart_rx_cb_t cb, void *user){
 }
 
 status_t uart_set_baud(uart_handle_t* h_, uint32_t baud){
+    uart_config_t cfg = { .baud=baud, .databits=8, .stopbits=1, .parity=0 };
     struct uart_handle_s* h = (struct uart_handle_s*)h_;
     if(!h) return ERR_ERR(MODULE_ID, 0x0014);
-    uart_config_t cfg = { .baud=baud, .databits=8, .stopbits=1, .parity=0 };
+    
     h->tx_coalesce_min = 32;
     usart_apply_cfg(h->map->usart, &cfg);
     return ERR_OK;

@@ -28,12 +28,21 @@ SECTIONS
 #endif
 #define MODULE_TAG "core.cbuf"
 
+/* portable inline for ARMCC/ARMCLANG/GCC */
+#ifndef STATIC_INLINE
+#  if defined(__CC_ARM) || defined(__ARMCC_VERSION)
+#    define STATIC_INLINE static __inline
+#  else
+#    define STATIC_INLINE static inline
+#  endif
+#endif
+
 /* Typedefs ------------------------------------------------------------------*/
 
 /* Private (static) data -----------------------------------------------------*/
 
 /* Private helpers -----------------------------------------------------------*/
-static inline uint16_t _inc(uint16_t v, uint16_t size){ return (uint16_t)((v+1u) % size); }
+STATIC_INLINE uint16_t _inc(uint16_t v, uint16_t size){ return (uint16_t)((v+1u) % size); }
 
 /* Public API ----------------------------------------------------------------*/
 void cbuf_init(cbuf_t* c, uint8_t* storage, uint16_t size){

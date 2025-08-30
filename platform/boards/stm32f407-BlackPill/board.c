@@ -57,6 +57,7 @@ const board_uart_map_t* board_uart_get(int logical_id){
 void board_init_clocks(void){
     /* NOTE: System clock tree setup is project-specific.
        Provide your SystemClock_Config() elsewhere. */
+    
 }
 
 void board_init_gpio(void){
