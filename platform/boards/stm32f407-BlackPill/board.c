@@ -22,8 +22,8 @@ Created:       2025-08-28
 static const board_uart_map_t uarts[] = {
     { /* logical 0: USART2 on PA2/PA3 (AF7) */
         .usart = USART2,
-        .tx_port = GPIOA, .tx_pin = LL_GPIO_PIN_2, .tx_af = LL_GPIO_AF_7,
-        .rx_port = GPIOA, .rx_pin = LL_GPIO_PIN_3, .rx_af = LL_GPIO_AF_7,
+        .tx_port = GPIOA, .tx_pin = LL_GPIO_PIN_2, .tx_af = GPIO_AF7_USART2,
+        .rx_port = GPIOA, .rx_pin = LL_GPIO_PIN_3, .rx_af = GPIO_AF7_USART2,
         .dma = DMA1,
 
         .dma_rx_stream = DMA1_Stream5, .dma_rx_channel = LL_DMA_CHANNEL_4, /* USART2_RX */
@@ -32,19 +32,6 @@ static const board_uart_map_t uarts[] = {
         .usart_irqn = USART2_IRQn,
         .dma_rx_irqn = DMA1_Stream5_IRQn,
         .dma_tx_irqn = DMA1_Stream6_IRQn
-    },
-    { /* logical 1: USART3 on PD8/PD9 (AF7) */
-        .usart = USART3,
-        .tx_port = GPIOD, .tx_pin = LL_GPIO_PIN_8, .tx_af = LL_GPIO_AF_7,
-        .rx_port = GPIOD, .rx_pin = LL_GPIO_PIN_9, .rx_af = LL_GPIO_AF_7,
-        .dma = DMA1,
-
-        .dma_rx_stream = DMA1_Stream1, .dma_rx_channel = LL_DMA_CHANNEL_4, /* USART3_RX */
-        .dma_tx_stream = DMA1_Stream3, .dma_tx_channel = LL_DMA_CHANNEL_4, /* USART3_TX */
-
-        .usart_irqn = USART3_IRQn,
-        .dma_rx_irqn = DMA1_Stream1_IRQn,
-        .dma_tx_irqn = DMA1_Stream3_IRQn
     }
 };;
 

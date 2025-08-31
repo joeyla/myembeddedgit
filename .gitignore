@@ -18,6 +18,8 @@ CMakeCache.txt
 *.dbgconf
 *.lnp
 *.dep
+*.scvd
+*.iex
 
 # Keil/uVision
 *.uvguix*
@@ -26,6 +28,7 @@ CMakeCache.txt
 RTE/
 Objects/
 Listings/
+Output/Obj/
 JLinkLog.txt
 
 # IDE folders

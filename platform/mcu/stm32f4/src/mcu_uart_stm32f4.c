@@ -3,7 +3,7 @@
 ===============================================================================
 Module:        platform.mcu.stm32f4.uart
 Description:   STM32F4 UART with RX DMA circular + TX DMA ring + per-write callbacks
-Author:        Starter Repo
+Author:        Starter Repo mcu_uart_stm32f4.c
 ===============================================================================
 */
 /* Includes ------------------------------------------------------------------*/
@@ -67,6 +67,9 @@ struct uart_handle_s {
     volatile uint8_t  tx_req_head;
     volatile uint8_t  tx_req_tail;
 
+    uint32_t rx_stream_idx;   /* LL_DMA_STREAM_n */
+    uint32_t tx_stream_idx;
+
     /* Optional callbacks */
     uart_rx_cb_t rx_cb; void* rx_user;
 };
@@ -86,6 +89,12 @@ extern const uint16_t stm32f4_uart0_tx_size;
 extern volatile uint8_t stm32f4_uart1_tx_buf[];
 extern const uint16_t   stm32f4_uart1_tx_size;
     
+extern volatile uint8_t stm32f4_uart2_rx_buf[];
+extern const uint16_t   stm32f4_uart2_rx_size;
+
+extern volatile uint8_t stm32f4_uart2_tx_buf[];
+extern const uint16_t   stm32f4_uart2_tx_size;
+
 static struct uart_handle_s handles[3];
 static void usart_apply_cfg(USART_TypeDef* U, const uart_config_t* cfg);
 
@@ -171,7 +180,7 @@ static void dma_rx_start(struct uart_handle_s* h){
     LL_DMA_EnableIT_TC                (m->dma, rxst);
 
     LL_USART_EnableDMAReq_RX(m->usart);
-    LL_DMA_EnableStream(m->dma, (uint32_t)m->dma_rx_stream);
+    LL_DMA_EnableStream(m->dma, (uint32_t)rxst);
 }
 
 static uint16_t dma_rx_available(struct uart_handle_s* h){
@@ -245,34 +254,86 @@ static void tx_dma_start_locked(struct uart_handle_s* h){
 }
 
 /* Public API ----------------------------------------------------------------*/
-status_t uart_open(int logical_id, const uart_config_t *cfg, uart_handle_t** out){
-    if(!out) return ERR_ERR(MODULE_ID, 0x0001);
+//status_t uart_open(int logical_id, const uart_config_t *cfg, uart_handle_t** out){
+//    if(!out) return ERR_ERR(MODULE_ID, 0x0001);
+//    const board_uart_map_t* map = board_uart_get(logical_id);
+//    if(!map) return ERR_ERR(MODULE_ID, 0x0002);
+//    board_init_uart(map);
+
+//    struct uart_handle_s* h = &handles[logical_id % 3];
+//    *h = (struct uart_handle_s){0};
+//    h->logical_id = logical_id;
+//    h->map = map;
+//    /* Bind link-time buffers */
+//    if(logical_id == 0){
+//        h->rx_buf = stm32f4_uart0_rx_buf; h->rx_size = stm32f4_uart0_rx_size; h->rx_mask = (uint16_t)(h->rx_size - 1u);
+//        h->tx_ring = stm32f4_uart0_tx_buf; h->tx_size = stm32f4_uart0_tx_size; h->tx_mask = (uint16_t)(h->tx_size - 1u);
+//    } else {
+//        h->rx_buf = stm32f4_uart1_rx_buf; h->rx_size = stm32f4_uart1_rx_size; h->rx_mask = (uint16_t)(h->rx_size - 1u);
+//        h->tx_ring = stm32f4_uart1_tx_buf; h->tx_size = stm32f4_uart1_tx_size; h->tx_mask = (uint16_t)(h->tx_size - 1u);
+//    }
+
+
+//    h->tx_coalesce_min = 32;
+//    usart_apply_cfg(map->usart, cfg);
+//    dma_rx_start(h);
+
+//    NVIC_SetPriority(map->dma_rx_irqn, 5);
+//    NVIC_EnableIRQ(map->dma_rx_irqn);
+//    NVIC_SetPriority(DMA1_Stream6_IRQn, 5);
+//    NVIC_EnableIRQ(DMA1_Stream6_IRQn);
+
+//    *out = (uart_handle_t*)h;
+//    return ERR_OK;
+//}
+#include <stdio.h>
+#include <string.h>
+status_t uart_open(int logical_id, const uart_config_t* cfg, uart_handle_t** out)
+{
+    if (!out) return ERR_ERR(MODULE_ID, 0x0001);
+
     const board_uart_map_t* map = board_uart_get(logical_id);
-    if(!map) return ERR_ERR(MODULE_ID, 0x0002);
-    board_init_uart(map);
+    if (!map) return ERR_ERR(MODULE_ID, 0x0002);
 
-    struct uart_handle_s* h = &handles[logical_id % 3];
-    *h = (struct uart_handle_s){0};
+    board_init_uart(map);                         // if this already enables NVIC, drop the NVIC code below
+
+    struct uart_handle_s* h = &handles[logical_id];
+    memset(h, 0, sizeof *h);
     h->logical_id = logical_id;
-    h->map = map;
-    /* Bind link-time buffers */
-    if(logical_id == 0){
-        h->rx_buf = stm32f4_uart0_rx_buf; h->rx_size = stm32f4_uart0_rx_size; h->rx_mask = (uint16_t)(h->rx_size - 1u);
-        h->tx_ring = stm32f4_uart0_tx_buf; h->tx_size = stm32f4_uart0_tx_size; h->tx_mask = (uint16_t)(h->tx_size - 1u);
-    } else {
-        h->rx_buf = stm32f4_uart1_rx_buf; h->rx_size = stm32f4_uart1_rx_size; h->rx_mask = (uint16_t)(h->rx_size - 1u);
-        h->tx_ring = stm32f4_uart1_tx_buf; h->tx_size = stm32f4_uart1_tx_size; h->tx_mask = (uint16_t)(h->tx_size - 1u);
-    }
+    h->map        = map;
 
+    /* bind link-time buffers (provide 0/1/2 as needed) */
+    switch (logical_id) {
+      case 0:  h->rx_buf = stm32f4_uart0_rx_buf; h->rx_size = stm32f4_uart0_rx_size;
+               h->tx_ring = stm32f4_uart0_tx_buf; h->tx_size = stm32f4_uart0_tx_size; break;
+      case 1:  h->rx_buf = stm32f4_uart1_rx_buf; h->rx_size = stm32f4_uart1_rx_size;
+               h->tx_ring = stm32f4_uart1_tx_buf; h->tx_size = stm32f4_uart1_tx_size; break;
+      case 2:  h->rx_buf = stm32f4_uart2_rx_buf; h->rx_size = stm32f4_uart2_rx_size;
+               h->tx_ring = stm32f4_uart2_tx_buf; h->tx_size = stm32f4_uart2_tx_size; break;
+      default: return ERR_ERR(MODULE_ID, 0x0003);
+    }
+    h->rx_mask = (uint16_t)(h->rx_size - 1u);
+    h->tx_mask = (uint16_t)(h->tx_size - 1u);
+
+    /* cache stream indices (F4 LL expects indices, not pointers) */
+    h->rx_stream_idx = dma_stream_index(map->dma_rx_stream);
+    h->tx_stream_idx = dma_stream_index(map->dma_tx_stream);
 
     h->tx_coalesce_min = 32;
     usart_apply_cfg(map->usart, cfg);
-    dma_rx_start(h);
 
+    /* configure RX DMA (program regs + clear flags), then enable IRQs for THIS UART */
+    dma_rx_start(h);                             // does LL_DMA_Set* + ClearFlag_* for rx_stream
+    NVIC_ClearPendingIRQ(map->dma_rx_irqn);
     NVIC_SetPriority(map->dma_rx_irqn, 5);
     NVIC_EnableIRQ(map->dma_rx_irqn);
-    NVIC_SetPriority(DMA1_Stream6_IRQn, 5);
-    NVIC_EnableIRQ(DMA1_Stream6_IRQn);
+
+    NVIC_ClearPendingIRQ(map->dma_tx_irqn);
+    NVIC_SetPriority(map->dma_tx_irqn, 5);
+    NVIC_EnableIRQ(map->dma_tx_irqn);
+
+    /* finally start RX */
+    LL_DMA_EnableStream(map->dma, h->rx_stream_idx);
 
     *out = (uart_handle_t*)h;
     return ERR_OK;

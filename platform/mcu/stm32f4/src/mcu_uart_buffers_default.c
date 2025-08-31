@@ -1,10 +1,10 @@
 #include <stdint.h>
 
-/* Place in .uartbufs for CCM/fast RAM via scatter file */
-#if defined(__CC_ARM) || defined(__ARMCC_VERSION)
-  #define SEC(a) __attribute__((section(a)))
+/* after: F401 -> no special section; others keep .uartbufs */
+#if defined(STM32F401xC) || defined(STM32F401xE)
+  #define SEC_UARTBUF /* empty: place in default SRAM at 0x20000000 */
 #else
-  #define SEC(a) __attribute__((section(a)))
+  #define SEC_UARTBUF __attribute__((section(".uartbufs")))
 #endif
 
 /* Default sizes (power of two) — override by providing your own object file */
@@ -15,15 +15,19 @@
 #define STM32F4_UART0_TX_SIZE 1024u
 #endif
 
-SEC(".uartbufs") uint8_t stm32f4_uart0_rx_buf[STM32F4_UART0_RX_SIZE];
-SEC(".uartbufs") uint8_t stm32f4_uart0_tx_buf[STM32F4_UART0_TX_SIZE];
+SEC_UARTBUF uint8_t stm32f4_uart0_rx_buf[STM32F4_UART0_RX_SIZE];
+SEC_UARTBUF uint8_t stm32f4_uart0_tx_buf[STM32F4_UART0_TX_SIZE];
 
 const uint16_t stm32f4_uart0_rx_size = (uint16_t)sizeof(stm32f4_uart0_rx_buf);
 const uint16_t stm32f4_uart0_tx_size = (uint16_t)sizeof(stm32f4_uart0_tx_buf);
 
 /* Optionally provide UART1 as well if you use logical_id=1 */
-SEC(".uartbufs") uint8_t stm32f4_uart1_rx_buf[1024];
-SEC(".uartbufs") uint8_t stm32f4_uart1_tx_buf[1024];
+SEC_UARTBUF uint8_t stm32f4_uart1_rx_buf[1024];
+SEC_UARTBUF uint8_t stm32f4_uart1_tx_buf[1024];
 const uint16_t stm32f4_uart1_rx_size = (uint16_t)sizeof(stm32f4_uart1_rx_buf);
 const uint16_t stm32f4_uart1_tx_size = (uint16_t)sizeof(stm32f4_uart1_tx_buf);
 
+SEC_UARTBUF uint8_t stm32f4_uart2_rx_buf[1024];
+SEC_UARTBUF uint8_t stm32f4_uart2_tx_buf[1024];
+const uint16_t stm32f4_uart2_rx_size = (uint16_t)sizeof(stm32f4_uart2_rx_buf);
+const uint16_t stm32f4_uart2_tx_size = (uint16_t)sizeof(stm32f4_uart2_tx_buf);
